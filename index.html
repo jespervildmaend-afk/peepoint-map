@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pee Point</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  :root {
+    --blue: #1565c0;
+    --blue-dark: #0d47a1;
+    --blue-light: #e3f0fd;
+    --yellow: #f5a623;
+    --green: #2e7d32;
+    --green-light: #e8f5e9;
+    --orange: #e65100;
+    --orange-light: #fff3e0;
+    --white: #ffffff;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-500: #64748b;
+    --gray-700: #334155;
+    --gray-900: #0f172a;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--gray-50); overflow: hidden; }
+
+  /* MAP */
+  #map { position: fixed; inset: 0; z-index: 0; }
+
+  /* HEADER */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--blue);
+    padding: 12px 16px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(21,101,192,0.3);
+  }
+  .logo { display: flex; flex-direction: column; }
+  .logo-main { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-main span.pee { color: var(--yellow); }
+  .logo-main span.point { color: var(--white); }
+  .logo-sub { font-size: 9px; color: rgba(255,255,255,0.65); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 1px; }
+  .locate-btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    color: white; border-radius: 20px; padding: 6px 12px; font-size: 12px;
+    font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; gap: 5px; transition: all 0.2s;
+  }
+  .locate-btn:active { background: rgba(255,255,255,0.25); }
+
+  /* FILTER CHIPS */
+  .filters {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 99;
+    display: flex; gap: 6px; padding: 8px 14px;
+    overflow-x: auto; scrollbar-width: none;
+    background: linear-gradient(to bottom, rgba(21,101,192,0.08), transparent);
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .chip {
+    background: white; border: 1.5px solid var(--gray-200); border-radius: 20px;
+    padding: 5px 11px; font-size: 11px; font-weight: 500; white-space: nowrap;
+    cursor: pointer; color: var(--gray-700); transition: all 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .chip.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+  /* BOTTOM SHEET */
+  .bottom-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    background: white; border-radius: 24px 24px 0 0;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.15);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 75vh; overflow-y: auto;
+  }
+  .bottom-sheet.open { transform: translateY(0); }
+  .sheet-handle { width: 36px; height: 4px; background: var(--gray-200); border-radius: 2px; margin: 12px auto 0; }
+  .sheet-content { padding: 12px 18px 32px; }
+  .sheet-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .sheet-name { font-size: 17px; font-weight: 700; color: var(--gray-900); line-height: 1.2; max-width: 75%; }
+  .sheet-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+  .badge-free { background: var(--green-light); color: var(--green); }
+  .badge-paid { background: var(--orange-light); color: var(--orange); }
+  .sheet-address { font-size: 12px; color: var(--gray-500); margin-bottom: 12px; display: flex; align-items: center; gap: 4px; }
+  .sheet-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .pill {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 500; padding: 4px 9px;
+    background: var(--blue-light); color: var(--blue); border-radius: 8px;
+  }
+  .pill.lock { background: #fff8e1; color: #f57f17; }
+
+  /* RATING */
+  .rating-section { margin-bottom: 14px; }
+  .rating-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .rating-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .rating-cat {
+    background: var(--gray-50); border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+    padding: 8px 10px; cursor: pointer; transition: all 0.15s;
+  }
+  .rating-cat.selected { background: var(--blue-light); border-color: var(--blue); }
+  .rating-cat-name { font-size: 10px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+  .stars { display: flex; gap: 2px; }
+  .star { font-size: 16px; color: var(--gray-200); cursor: pointer; transition: color 0.1s; }
+  .star.on { color: var(--yellow); }
+
+  /* HOURS */
+  .hours-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-500); margin-bottom: 14px; }
+  .hours-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+  /* BUTTONS */
+  .btn-row { display: flex; gap: 8px; }
+  .btn-route {
+    flex: 1; background: var(--gray-100); color: var(--blue); border: none;
+    border-radius: var(--radius-sm); padding: 12px; font-size: 13px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-open {
+    flex: 2; background: var(--blue); color: white; border: none;
+    border-radius: var(--radius-sm); padding: 12px; font-size: 13px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background 0.2s;
+  }
+  .btn-open.pay { background: var(--orange); }
+  .btn-open:active { opacity: 0.9; }
+
+  /* LOCK SCREEN */
+  .lock-screen {
+    position: fixed; inset: 0; z-index: 300;
+    background: white; transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+  }
+  .lock-screen.open { transform: translateY(0); }
+  .lock-header {
+    background: var(--blue); padding: 52px 18px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .lock-back {
+    background: rgba(255,255,255,0.15); border: none; color: white;
+    width: 36px; height: 36px; border-radius: 50%; font-size: 18px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .lock-header-title { font-size: 16px; font-weight: 700; color: white; }
+  .lock-body { flex: 1; padding: 24px 18px; overflow-y: auto; }
+  .lock-icon-wrap { width: 72px; height: 72px; background: var(--blue-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .lock-icon-wrap svg { width: 36px; height: 36px; }
+  .lock-title { font-size: 18px; font-weight: 700; color: var(--gray-900); text-align: center; margin-bottom: 4px; }
+  .lock-meta { font-size: 12px; color: var(--gray-500); text-align: center; margin-bottom: 20px; }
+  .lock-pay { background: var(--orange-light); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; justify-content: space-between; font-size: 13px; color: var(--orange); font-weight: 600; margin-bottom: 18px; }
+  .lock-steps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+  .lock-step { display: flex; gap: 12px; align-items: flex-start; }
+  .step-num { min-width: 26px; height: 26px; background: var(--blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .step-text { font-size: 13px; color: var(--gray-500); padding-top: 4px; line-height: 1.5; }
+  .step-text strong { color: var(--gray-900); }
+  .lock-btn {
+    width: 100%; background: var(--blue); color: white; border: none;
+    border-radius: var(--radius-sm); padding: 14px; font-size: 15px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; margin-bottom: 10px;
+  }
+  .lock-btn.pay { background: var(--orange); }
+  .progress-wrap { display: none; text-align: center; padding: 8px 0; }
+  .progress-msg { font-size: 13px; color: var(--gray-500); margin-bottom: 8px; }
+  .progress-bar { height: 5px; background: var(--gray-100); border-radius: 3px; }
+  .progress-fill { height: 5px; background: var(--blue); border-radius: 3px; width: 0; transition: width 0.3s; }
+  .success-wrap { display: none; text-align: center; padding: 16px 0; }
+  .success-icon { width: 60px; height: 60px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .success-title { font-size: 18px; font-weight: 700; color: var(--green); }
+  .success-sub { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+
+  /* TOILET COUNT BUBBLE */
+  .count-bubble {
+    position: fixed; bottom: 20px; right: 16px; z-index: 150;
+    background: var(--blue); color: white; border-radius: 20px;
+    padding: 8px 14px; font-size: 12px; font-weight: 600;
+    box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 6px;
+    transition: opacity 0.3s;
+  }
+  .count-bubble.hidden { opacity: 0; pointer-events: none; }
+
+  /* OVERLAY */
+  .overlay {
+    position: fixed; inset: 0; z-index: 190;
+    background: rgba(0,0,0,0.2);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .overlay.show { opacity: 1; pointer-events: all; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-main"><span class="pee">Pee </span><span class="point">Point</span></div>
+    <div class="logo-sub">Restroom Rescue</div>
+  </div>
+  <button class="locate-btn" onclick="centerOnUser()">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="white" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="white"/><line x1="8" y1="1" x2="8" y2="4" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="8" y1="12" x2="8" y2="15" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="8" x2="4" y2="8" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="8" x2="15" y2="8" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Find mig
+  </button>
+</div>
+
+<div class="filters">
+  <div class="chip active" onclick="filterChip(this,'alle')">Alle</div>
+  <div class="chip" onclick="filterChip(this,'gratis')">Gratis</div>
+  <div class="chip" onclick="filterChip(this,'betalt')">Betalt</div>
+  <div class="chip" onclick="filterChip(this,'pusle')">Puslebord</div>
+  <div class="chip" onclick="filterChip(this,'laas')">Digital lås</div>
+  <div class="chip" onclick="filterChip(this,'handicap')">Handicap</div>
+</div>
+
+<div class="count-bubble" id="countBubble">
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 1C5.2 1 3 3.2 3 6c0 4 5 9 5 9s5-5 5-9c0-2.8-2.2-5-5-5z" fill="white"/></svg>
+  <span id="countText">Indlæser...</span>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-content">
+    <div class="sheet-top">
+      <div class="sheet-name" id="sheetName">Toilet navn</div>
+      <div class="sheet-badge" id="sheetBadge">Gratis</div>
+    </div>
+    <div class="sheet-address" id="sheetAddress">
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 1C5.2 1 3 3.2 3 6c0 4 5 9 5 9s5-5 5-9c0-2.8-2.2-5-5-5z" fill="#64748b"/></svg>
+      <span id="sheetAddressText"></span>
+    </div>
+    <div class="hours-row">
+      <div class="hours-dot"></div>
+      <span id="sheetHours">Åbent nu</span>
+    </div>
+    <div class="sheet-pills" id="sheetPills"></div>
+    <div class="rating-section">
+      <div class="rating-label">Bedøm dette toilet</div>
+      <div class="rating-cats">
+        <div class="rating-cat" onclick="selectCat(this)">
+          <div class="rating-cat-name">Renlighed</div>
+          <div class="stars" data-cat="renlighed">
+            <span class="star" onclick="rateStar(this,1)">★</span>
+            <span class="star" onclick="rateStar(this,2)">★</span>
+            <span class="star" onclick="rateStar(this,3)">★</span>
+            <span class="star" onclick="rateStar(this,4)">★</span>
+            <span class="star" onclick="rateStar(this,5)">★</span>
+          </div>
+        </div>
+        <div class="rating-cat" onclick="selectCat(this)">
+          <div class="rating-cat-name">Sikkerhed</div>
+          <div class="stars" data-cat="sikkerhed">
+            <span class="star" onclick="rateStar(this,1)">★</span>
+            <span class="star" onclick="rateStar(this,2)">★</span>
+            <span class="star" onclick="rateStar(this,3)">★</span>
+            <span class="star" onclick="rateStar(this,4)">★</span>
+            <span class="star" onclick="rateStar(this,5)">★</span>
+          </div>
+        </div>
+        <div class="rating-cat" onclick="selectCat(this)">
+          <div class="rating-cat-name">Pusleforhold</div>
+          <div class="stars" data-cat="pusle">
+            <span class="star" onclick="rateStar(this,1)">★</span>
+            <span class="star" onclick="rateStar(this,2)">★</span>
+            <span class="star" onclick="rateStar(this,3)">★</span>
+            <span class="star" onclick="rateStar(this,4)">★</span>
+            <span class="star" onclick="rateStar(this,5)">★</span>
+          </div>
+        </div>
+        <div class="rating-cat" onclick="selectCat(this)">
+          <div class="rating-cat-name">Tilgængelighed</div>
+          <div class="stars" data-cat="tilg">
+            <span class="star" onclick="rateStar(this,1)">★</span>
+            <span class="star" onclick="rateStar(this,2)">★</span>
+            <span class="star" onclick="rateStar(this,3)">★</span>
+            <span class="star" onclick="rateStar(this,4)">★</span>
+            <span class="star" onclick="rateStar(this,5)">★</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-route" onclick="getRoute()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8h12M8 2l6 6-6 6" stroke="#1565c0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Rute
+      </button>
+      <button class="btn-open" id="mainBtn" onclick="openLockScreen()">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="10" rx="2" fill="white" fill-opacity="0.4" stroke="white" stroke-width="1.5"/><path d="M7 9V6a3 3 0 016 0v3" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span id="mainBtnLabel">Åbn med digital lås</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-header">
+    <button class="lock-back" onclick="closeLockScreen()">←</button>
+    <div class="lock-header-title">Digital lås</div>
+  </div>
+  <div class="lock-body">
+    <div class="lock-icon-wrap">
+      <svg viewBox="0 0 32 32" fill="none"><rect x="6" y="14" width="20" height="15" rx="3" fill="#1565c0"/><path d="M10 14V10a6 6 0 0112 0v4" stroke="#1565c0" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="21" r="2.5" fill="white"/></svg>
+    </div>
+    <div class="lock-title" id="lockTitle">Åbn toilet</div>
+    <div class="lock-meta" id="lockMeta">Gratis adgang · Bluetooth</div>
+    <div class="lock-pay" id="lockPay" style="display:none;">
+      <span>Betaling kræves</span><strong id="lockPayAmt">Kr. 5,-</strong>
+    </div>
+    <div class="lock-steps">
+      <div class="lock-step"><div class="step-num">1</div><div class="step-text"><strong>Bekræft din position</strong> — du skal være inden for 15 meter</div></div>
+      <div class="lock-step"><div class="step-num">2</div><div class="step-text" id="lockStep2"><strong>Bluetooth aktiveres</strong> — appen forbinder til låsen</div></div>
+      <div class="lock-step"><div class="step-num">3</div><div class="step-text"><strong>Låsen åbner</strong> — du har 30 sekunder til at gå ind</div></div>
+    </div>
+    <button class="lock-btn" id="lockBtn" onclick="doUnlock()">Åbn lås nu</button>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-msg" id="progressMsg">Forbinder...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <div class="success-wrap" id="successWrap">
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M5 14l6 6L23 8" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="success-title">Låsen er åben!</div>
+      <div class="success-sub">Du har 30 sekunder til at gå ind</div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase + Google Maps -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+// ── Firebase config ──────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDrJCRvlQR-hFlFZuHodQMHpNWB3NERQM",
+  authDomain: "pee-point-0tnb8y.firebaseapp.com",
+  projectId: "pee-point-0tnb8y",
+  storageBucket: "pee-point-0tnb8y.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── State ────────────────────────────────────────────────
+let map, markers = [], allToilets = [], currentFilter = 'alle', selectedToilet = null;
+
+// ── Map init ─────────────────────────────────────────────
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 55.4370, lng: 10.4159 },
+    zoom: 14,
+    disableDefaultUI: true,
+    zoomControl: false,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    styles: [
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#b3d9f0' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#e8eef5' }] },
+      { featureType: 'landscape', stylers: [{ color: '#f0f4f0' }] },
+      { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#334155' }] },
+    ]
+  });
+  loadToilets();
+  centerOnUser();
+}
+
+// ── Load toilets from Firebase ───────────────────────────
+async function loadToilets() {
+  try {
+    const snap = await db.collection('toilets').where('is_active', '==', true).get();
+    allToilets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderMarkers(allToilets);
+    updateCount(allToilets.length);
+  } catch (e) {
+    // Fallback demo data
+    allToilets = [
+      { id: '1', name: 'Stige Badhavn Toilet', address: 'Lodsvej 36, 5270 Odense N', latitude: 55.4393825, longitude: 10.421226, is_free: true, price_dkk: 0, has_baby_change: false, is_accessible: false, has_digital_lock: true, lock_id: 'lock_demo_stige', opening_hours: 'Åbent hele dagen', is_active: true },
+      { id: '2', name: 'Stige Kirke', address: 'Kirkegyden, Stige, 5270 Odense N', latitude: 55.43763784359967, longitude: 10.416885542261872, is_free: true, price_dkk: 0, has_baby_change: false, is_accessible: true, has_digital_lock: false, lock_id: '', opening_hours: 'Man-Fre 07:30-15:30', is_active: true },
+      { id: '3', name: 'Pee Point GoldenThrone', address: 'Skippervej 9A, 5270 Odense N', latitude: 55.4370467781947, longitude: 10.41592144040744, is_free: false, price_dkk: 5, has_baby_change: true, is_accessible: true, has_digital_lock: true, lock_id: 'lock_demo_golden', opening_hours: 'Man-Fre 10:00-16:00', is_active: true },
+    ];
+    renderMarkers(allToilets);
+    updateCount(allToilets.length);
+  }
+}
+
+// ── Render markers ───────────────────────────────────────
+function renderMarkers(toilets) {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+  toilets.forEach(toilet => {
+    const lat = toilet.latitude || (toilet.location && toilet.location.latitude) || 0;
+    const lng = toilet.longitude || (toilet.location && toilet.location.longitude) || 0;
+    if (!lat || !lng) return;
+
+    const color = toilet.is_free ? '#1565c0' : '#e65100';
+    const svg = `<svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="${color}"/>
+      <circle cx="18" cy="17" r="9" fill="white" fill-opacity="0.25"/>
+      <text x="18" y="22" text-anchor="middle" font-size="11" font-weight="bold" fill="white" font-family="DM Sans, sans-serif">WC</text>
+    </svg>`;
+
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      icon: { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), scaledSize: new google.maps.Size(36, 44), anchor: new google.maps.Point(18, 44) },
+      title: toilet.name
+    });
+    marker.addListener('click', () => openSheet(toilet));
+    markers.push(marker);
+  });
+}
+
+// ── Bottom sheet ─────────────────────────────────────────
+function openSheet(toilet) {
+  selectedToilet = toilet;
+  document.getElementById('sheetName').textContent = toilet.name;
+  document.getElementById('sheetAddressText').textContent = toilet.address || '';
+  document.getElementById('sheetHours').textContent = toilet.opening_hours || 'Åbent';
+
+  const badge = document.getElementById('sheetBadge');
+  badge.textContent = toilet.is_free ? 'Gratis' : `Kr. ${toilet.price_dkk},-`;
+  badge.className = 'sheet-badge ' + (toilet.is_free ? 'badge-free' : 'badge-paid');
+
+  const pills = document.getElementById('sheetPills');
+  pills.innerHTML = '';
+  if (toilet.has_baby_change) pills.innerHTML += '<div class="pill">👶 Puslebord</div>';
+  if (toilet.is_accessible) pills.innerHTML += '<div class="pill">♿ Handicap</div>';
+  if (toilet.has_digital_lock) pills.innerHTML += '<div class="pill lock">🔓 Digital lås</div>';
+
+  const btn = document.getElementById('mainBtn');
+  const lbl = document.getElementById('mainBtnLabel');
+  if (toilet.has_digital_lock && !toilet.is_free) {
+    lbl.textContent = `Betal Kr. ${toilet.price_dkk},- og åbn`;
+    btn.className = 'btn-open pay';
+  } else if (toilet.has_digital_lock) {
+    lbl.textContent = 'Åbn med digital lås';
+    btn.className = 'btn-open';
+  } else {
+    lbl.textContent = 'Vis på kort';
+    btn.className = 'btn-open';
+  }
+
+  document.getElementById('bottomSheet').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('countBubble').classList.add('hidden');
+  document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
+}
+
+function closeSheet() {
+  document.getElementById('bottomSheet').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('countBubble').classList.remove('hidden');
+}
+
+// ── Lock screen ──────────────────────────────────────────
+function openLockScreen() {
+  if (!selectedToilet || !selectedToilet.has_digital_lock) return;
+  const t = selectedToilet;
+  document.getElementById('lockTitle').textContent = 'Åbn ' + t.name;
+  document.getElementById('lockMeta').textContent = (t.is_free ? 'Gratis' : 'Kr. ' + t.price_dkk + ',-') + ' · Bluetooth';
+  const pay = document.getElementById('lockPay');
+  pay.style.display = t.is_free ? 'none' : 'flex';
+  document.getElementById('lockPayAmt').textContent = 'Kr. ' + t.price_dkk + ',-';
+  const step2 = document.getElementById('lockStep2');
+  step2.innerHTML = t.is_free ? '<strong>Bluetooth aktiveres</strong> — appen forbinder til låsen' : '<strong>Betaling gennemføres</strong> — via MobilePay eller kort';
+  const btn = document.getElementById('lockBtn');
+  btn.textContent = t.is_free ? 'Åbn lås nu' : 'Betal og åbn lås';
+  btn.className = t.is_free ? 'lock-btn' : 'lock-btn pay';
+  btn.style.display = 'block';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('successWrap').style.display = 'none';
+  document.getElementById('progressFill').style.width = '0';
+  document.getElementById('lockScreen').classList.add('open');
+}
+
+function closeLockScreen() {
+  document.getElementById('lockScreen').classList.remove('open');
+}
+
+function doUnlock() {
+  document.getElementById('lockBtn').style.display = 'none';
+  const prog = document.getElementById('progressWrap');
+  const fill = document.getElementById('progressFill');
+  const msg = document.getElementById('progressMsg');
+  prog.style.display = 'block';
+  const steps = ['Bekræfter position...', 'Forbinder til lås...', 'Sender åbningssignal...', 'Låsen åbner!'];
+  let w = 0, si = 0;
+  const iv = setInterval(() => {
+    w += 3;
+    fill.style.width = w + '%';
+    msg.textContent = steps[Math.min(Math.floor(w / 25), 3)];
+    if (w >= 100) {
+      clearInterval(iv);
+      prog.style.display = 'none';
+      document.getElementById('successWrap').style.display = 'block';
+    }
+  }, 60);
+}
+
+// ── Filter ───────────────────────────────────────────────
+function filterChip(el, type) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = type;
+  let filtered = allToilets;
+  if (type === 'gratis') filtered = allToilets.filter(t => t.is_free);
+  else if (type === 'betalt') filtered = allToilets.filter(t => !t.is_free);
+  else if (type === 'pusle') filtered = allToilets.filter(t => t.has_baby_change);
+  else if (type === 'laas') filtered = allToilets.filter(t => t.has_digital_lock);
+  else if (type === 'handicap') filtered = allToilets.filter(t => t.is_accessible);
+  renderMarkers(filtered);
+  updateCount(filtered.length);
+  closeSheet();
+}
+
+// ── Helpers ──────────────────────────────────────────────
+function updateCount(n) {
+  document.getElementById('countText').textContent = n + ' toilet' + (n !== 1 ? 'ter' : '') + ' i nærheden';
+}
+
+function centerOnUser() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      map.setZoom(15);
+    });
+  }
+}
+
+function getRoute() {
+  if (!selectedToilet) return;
+  const lat = selectedToilet.latitude || 0;
+  const lng = selectedToilet.longitude || 0;
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+}
+
+function selectCat(el) {
+  document.querySelectorAll('.rating-cat').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function rateStar(el, n) {
+  const row = el.closest('.stars');
+  row.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < n));
+}
+</script>
+
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDrJCRvlQR-hFlFZuHodQMHpNWB3NERQM&callback=initMap&language=da">
+</script>
+
+</body>
+</html>
